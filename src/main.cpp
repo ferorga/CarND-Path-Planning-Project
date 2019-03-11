@@ -5,13 +5,19 @@
 #include <vector>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
-#include "helpers.h"
+//#include "helpers.h"
 #include "json.hpp"
+#include "vehicle.h"
 
 // for convenience
 using nlohmann::json;
 using std::string;
 using std::vector;
+
+int lane = 1;
+double ref_vel = 49.5;
+
+Vehicle v;
 
 int main() {
   uWS::Hub h;
@@ -50,6 +56,8 @@ int main() {
     map_waypoints_dy.push_back(d_y);
   }
 
+  v.SetMapWaypoints(map_waypoints_s, map_waypoints_x, map_waypoints_y, map_waypoints_dx, map_waypoints_dy);
+
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
                &map_waypoints_dx,&map_waypoints_dy]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
@@ -86,21 +94,13 @@ int main() {
 
           // Sensor Fusion Data, a list of all other cars on the same side 
           //   of the road.
-          auto sensor_fusion = j[1]["sensor_fusion"];
+          vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
+
+          v.Run(car_x, car_y, car_s, car_d, car_yaw, car_speed, previous_path_x, previous_path_y, end_path_s, end_path_d, sensor_fusion);
 
           json msgJson;
-
-          vector<double> next_x_vals;
-          vector<double> next_y_vals;
-
-          /**
-           * TODO: define a path made up of (x,y) points that the car will visit
-           *   sequentially every .02 seconds
-           */
-
-
-          msgJson["next_x"] = next_x_vals;
-          msgJson["next_y"] = next_y_vals;
+          msgJson["next_x"] = v.GetNextX();
+          msgJson["next_y"] = v.GetNextY();
 
           auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
