@@ -3,11 +3,13 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "Eigen-3.3/Eigen/Core"
-#include "Eigen-3.3/Eigen/QR"
-//#include "helpers.h"
 #include "json.hpp"
+
+#include "helpers.h"
+#include "map.h"
 #include "vehicle.h"
+#include "behaviour.h"
+#include "trajectory.h"
 
 // for convenience
 using nlohmann::json;
@@ -17,10 +19,10 @@ using std::vector;
 int lane = 1;
 double ref_vel = 49.5;
 
-Vehicle v;
-
 int main() {
   uWS::Hub h;
+
+  Map &map = Map::getInstance();
 
   // Load up map values for waypoint's x,y,s and d normalized normal vectors
   vector<double> map_waypoints_x;
@@ -54,11 +56,15 @@ int main() {
     map_waypoints_s.push_back(s);
     map_waypoints_dx.push_back(d_x);
     map_waypoints_dy.push_back(d_y);
+
+    map.addWaypoint(x,y,s,d_x,d_y);
   }
 
-  v.SetMapWaypoints(map_waypoints_s, map_waypoints_x, map_waypoints_y, map_waypoints_dx, map_waypoints_dy);
+  map.buildSplines();
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
+  Behaviour behaviour = Behaviour(); 
+
+  h.onMessage([&behaviour, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
                &map_waypoints_dx,&map_waypoints_dy]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                uWS::OpCode opCode) {
@@ -96,15 +102,49 @@ int main() {
           //   of the road.
           vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
 
-          v.Run(car_x, car_y, car_s, car_d, car_yaw, car_speed, previous_path_x, previous_path_y, end_path_s, end_path_d, sensor_fusion);
+          //
+          // MAIN CODE HERE
+          //
+
+          // Create other vehicles objects based on sensor fusion data
+          vector<Vehicle> vehicles;
+          for (auto v_data : sensor_fusion)
+          {
+            Vehicle v = Vehicle(v_data[0], v_data[1], v_data[2], v_data[3], v_data[4], v_data[5], v_data[6], 0.0);
+            vehicles.push_back(v);
+          }
+
+
+          // Create object with our car
+          Vehicle ego = Vehicle(-1, car_x, car_y, cos(deg2rad(car_yaw)), sin(deg2rad(car_yaw)), car_s, car_d, 0.0);
+
+
+          vector<double> ppx;
+          vector<double> ppy;
+
+          for (int i = 0; i < previous_path_x.size(); ++i)
+          {
+            ppx.push_back(previous_path_x[i]);
+            ppy.push_back(previous_path_y[i]);
+          }
+
+          Trajectory traj = behaviour.nextTrajectory(ego, vehicles, ppx, ppy);
+
+          vector<double> next_x_vals;
+          vector<double> next_y_vals;
+          for (int i = 0; i< traj.getSize(); ++i)
+          {
+            next_x_vals.push_back(traj.getX(i));
+            next_y_vals.push_back(traj.getY(i));
+          }
 
           json msgJson;
-          msgJson["next_x"] = v.GetNextX();
-          msgJson["next_y"] = v.GetNextY();
-
+          msgJson["next_x"] = next_x_vals;
+          msgJson["next_y"] = next_y_vals;
           auto msg = "42[\"control\","+ msgJson.dump()+"]";
 
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);            
+
         }  // end "telemetry" if
       } else {
         // Manual driving

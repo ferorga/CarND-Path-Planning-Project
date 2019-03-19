@@ -1,132 +1,88 @@
+#include <iostream>
+#include <math.h>
 #include "vehicle.h"
+#include "helpers.h"
+#include "map.h"
 
+using namespace std;
 
-Vehicle::Vehicle()
+Vehicle::Vehicle() {}
+
+Vehicle::Vehicle(int id, double x, double y, double vx, double vy, double s, double d, double t)
 {
+    this->id = id;
+    this->x = x;
+    this->y = y;
+    this->vx = vx;
+    this->vy = vy;
+    this->s = s;
+    this->d = d;
+    this->t = t;
+
+    this->theta = getTheta(vx, vy);
+    this->isInLane = isWithinLane(this->d, 4.0, 1.5);
+    this->lane = getLane(this->d, 4.0, 1.5);
 }
 
-Vehicle::~Vehicle() 
+Vehicle Vehicle::predictNextPosition(double t1, const vector<double> &maps_x, const vector<double> &maps_y)
 {
+    double newX = this->x + this->vx * t1;
+    double newY = this->y + this->vy * t1;
+    double theta = atan2(newY - this->y, newX - this->x);
+    vector<double> frenet = Map::getInstance().toFrenet(newX, newY, theta);
+
+    return Vehicle(this->id, newX, newY, this->vx, this->vy, frenet[0], frenet[1], t1);
 }
 
-void Vehicle::SetMapWaypoints(vector<double> map_waypoints_s, vector<double> map_waypoints_x, vector<double>map_waypoints_y, vector<double> map_waypoints_dx, vector<double> map_waypoints_dy)
+Vehicle Vehicle::predictFuturePosition(double t) const
 {
-	_map_wp_s = map_waypoints_s;
-	_map_wp_x = map_waypoints_x;
-	_map_wp_y = map_waypoints_y;
-	_map_wp_dx = map_waypoints_dx;
-	_map_wp_dy = map_waypoints_dy;
+    double newX = this->x + this->vx * t;
+    double newY = this->y + this->vy * t;
+
+    Map &map = Map::getInstance();
+    vector<double> frenet = map.toFrenet(newX, newY, this->theta);
+    return Vehicle(this->id, newX, newY, this->vx, this->vy, frenet[0], frenet[1], t);
 }
 
-void Vehicle::Run(double x, double y, double s, double d, double yaw, double speed, vector<double> prev_x, vector<double> prev_y, double end_s, double end_d, vector<vector<double>> sensor)
+double Vehicle::getSpeed() const
 {
-	int lane = 1;
-	double ref_vel = 49.5;
-
-	int prev_size = prev_x.size();
-
-	vector<double> ptsx;
-	vector<double> ptsy;
-
-	double ref_x = x;
-	double ref_y = y;
-	double ref_yaw = deg2rad(yaw);
-
-	if (prev_size < 2)
-	{
-		double prev_car_x = x - cos(yaw);
-		double prev_car_y = y - sin(yaw);
-
-		ptsx.push_back(prev_car_x);
-		ptsx.push_back(x);
-		ptsy.push_back(prev_car_y);
-		ptsy.push_back(y);
-	}
-	else
-	{
-		ref_x = prev_x[prev_size-1];
-		ref_y = prev_y[prev_size-1];
-
-		double ref_x_prev = prev_x[prev_size-2];
-		double ref_y_prev = prev_y[prev_size-2];
-		ref_yaw = atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
-
-		ptsx.push_back(ref_x_prev);
-		ptsx.push_back(ref_x);
-		ptsy.push_back(ref_y_prev);
-		ptsy.push_back(ref_y);
-	}
-
-	vector<double> next_wp0 = getXY(s+30, (2+4*lane), _map_wp_s, _map_wp_x, _map_wp_y);
-	vector<double> next_wp1 = getXY(s+60, (2+4*lane), _map_wp_s, _map_wp_x, _map_wp_y);
-	vector<double> next_wp2 = getXY(s+90, (2+4*lane), _map_wp_s, _map_wp_x, _map_wp_y);
-
-	ptsx.push_back(next_wp0[0]);
-	ptsx.push_back(next_wp1[0]);
-	ptsx.push_back(next_wp2[0]);
-	ptsy.push_back(next_wp0[1]);
-	ptsy.push_back(next_wp1[1]);
-	ptsy.push_back(next_wp2[1]);
-
-	for (int i = 0; i < ptsx.size(); i++)
-	{
-		double shift_x = ptsx[i]-ref_x;
-		double shift_y = ptsy[i]-ref_y;
-
-		ptsx[i] = (shift_x * cos(0-ref_yaw)-shift_y * sin(0-ref_yaw));
-		ptsy[i] = (shift_x * sin(0-ref_yaw)+shift_y * cos(0-ref_yaw));
-	}
-
-	vector<double> next_x_vals;
-	vector<double> next_y_vals;
-
-	tk::spline trajectory;
-
-	trajectory.set_points(ptsx, ptsy);
-
-	for (int i = 0; i < prev_x.size(); i++)
-	{
-		next_x_vals.push_back(prev_x[i]);
-		next_y_vals.push_back(prev_y[i]);
-	}
-
-	double target_x = 30.0;
-	double target_y = trajectory(target_x);
-	double target_dist = sqrt(target_x*target_x + target_y*target_y);
-
-	double x_add_on = 0;
-
-	for (int i = 1; i<=50-prev_x.size(); i++)
-	{
-		double N = target_dist/(.02*ref_vel/2.24);
-		double x_point = x_add_on + target_x/N;
-		double y_point = trajectory(x_point);
-
-		x_add_on = x_point;
-
-		double x_ref = x_point;
-		double y_ref = y_point;
-
-		x_point = (x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw));
-		y_point = (x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw));
-
-		x_point += ref_x;
-		y_point += ref_y;
-
-		next_x_vals.push_back(x_point);
-		next_y_vals.push_back(y_point);
-
-		_next_x = next_x_vals;
-		_next_y = next_y_vals;
-	}
+    return sqrt(this->vx * this->vx + this->vy * this->vy);
 }
 
-vector<double> Vehicle::GetNextX(void)
+vector<Vehicle> Vehicle::ahead(const vector<Vehicle> &others, int lane) const
 {
-	return _next_x;
+    vector<Vehicle> v_ahead;
+    for (const Vehicle &v : others)
+    {
+        if (v.lane != lane)
+        {
+            continue;
+        }
+        if (v.s >= this->s)
+        {
+            v_ahead.push_back(v);
+        }
+    }
+
+    return v_ahead;
 }
 
-vector<double> Vehicle::GetNextY(void)
+vector<Vehicle> Vehicle::behind(const vector<Vehicle> &others, int lane) const
 {
-	return _next_y;
+    vector<Vehicle> v_behind;
+    for (const Vehicle &v : others)
+    {
+        if (v.lane != lane)
+        {
+            continue;
+        }
+        if (v.s < this->s)
+        {
+            v_behind.push_back(v);
+        }
+    }
+
+    return v_behind;
 }
+
+Vehicle::~Vehicle() {}
