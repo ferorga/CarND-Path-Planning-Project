@@ -21,10 +21,12 @@ public:
 	double getX(int idx);
 	double getY(int idx);
 	double getS(int idx);
-	double getSV(int idx);	
 	double getD(int idx);
+	double getSV(int idx);		
 	double getDV(int idx);
-	
+	double getSA(int idx);		
+	double getDA(int idx);
+
 	int getSize(void);
 
 	double getLastX(void);
