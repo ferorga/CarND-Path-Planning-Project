@@ -95,16 +95,72 @@ int main() {
 
           /**
            * TODO: define a path made up of (x,y) points that the car will visit
-           *   sequentially every .02 seconds
+           *   sequentially every .02 seconds        
            */
 
+          vector<double> ppx;
+          vector<double> ppy;
+          for (int i = 0; i < previous_path_x.size(); ++i)
+          {
+            ppx.push_back(previous_path_x[i]);
+            ppy.push_back(previous_path_y[i]);
+          }
 
-          msgJson["next_x"] = next_x_vals;
-          msgJson["next_y"] = next_y_vals;
 
-          auto msg = "42[\"control\","+ msgJson.dump()+"]";
+          vector<double> ego_s_d = {car_s, car_d};
+          if (ppx.size()>2)
+          {
+            double oldoldppx = ppx[ppx.size()-2];
+            double oldoldppy = ppy[ppy.size()-2];
+            double oldppx = ppx[ppx.size()-1];
+            double oldppy = ppy[ppy.size()-1];
+            double new_yaw = atan2(oldppy - oldoldppy, oldppx - oldoldppx);
+            ego_s_d = getFrenet(oldppx, oldppy, new_yaw, map_waypoints_x, map_waypoints_y);
+          }
+          
+          std::cout<<"new size "<<50-ppx.size()<<std::endl;
 
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          std::cout<<"previous path "<<std::endl;
+          for(int i = 0; i<ppx.size();++i)
+          {
+            std::cout<<ppx[i]<<" ";
+          }
+          std::cout<<std::endl;
+          std::cout<<"previous path "<<std::endl;
+
+
+          double dist_inc = 0.5;
+          for(int i = 1; i<=50-ppx.size();++i)
+          {
+            double next_s = ego_s_d[0] + (i)*dist_inc;
+            double next_d = ego_s_d[1];
+            vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+            ppx.push_back(xy[0]);
+            ppy.push_back(xy[1]);
+            std::cout<<xy[0]<<"   ";
+          }
+          std::cout<<std::endl;
+          std::cout<<std::endl;
+          std::cout<<std::endl;
+
+          /*
+double dist_inc = 0.5;
+for (int i = 0; i < 50; ++i) {
+  next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
+  next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
+}
+*/
+          static bool hola = true;
+          if (hola)
+          {
+            msgJson["next_x"] = ppx;
+            msgJson["next_y"] = ppy;
+
+            auto msg = "42[\"control\","+ msgJson.dump()+"]";
+
+            ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          //  hola = false;
+          }
         }  // end "telemetry" if
       } else {
         // Manual driving
