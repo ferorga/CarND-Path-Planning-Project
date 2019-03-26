@@ -7,7 +7,7 @@ add_definitions(-std=c++11)
 set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS, "${CXX_FLAGS}")
 
-set(sources src/main.cpp src/map.cpp)
+set(sources src/main.cpp src/map.cpp src/trajectory.cpp src/vehicle.cpp)
 
 include_directories(/usr/local/include)
 link_directories(/usr/local/lib)

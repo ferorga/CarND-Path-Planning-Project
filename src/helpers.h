@@ -173,7 +173,7 @@ inline int getLane(double d, double lane_size, double lane_offset)
     return -1;
   }
 
-  return (int)floor(cal_d / lane_size);
+  return (int)round(cal_d / lane_size);
 }
 
 
@@ -194,6 +194,14 @@ inline bool isWithinLane(double d, double lane_spacing, double lane_inside_offse
   int target_lane = (int)floor(d / lane_spacing);
   int calibrated_lane = (int)floor(calibrated_d / lane_spacing);
   return target_lane == calibrated_lane;
+}
+
+inline bool isInTheSameLane(double d1, double d2)
+{
+  int l1 = (int)(floor)((d1-2.0)/4.0);
+  int l2 = (int)(floor)((d2-2.0)/4.0);
+
+  return (l1 == l2);
 }
 
 
