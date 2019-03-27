@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <random>
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "Eigen-3.3/Eigen/Dense"
@@ -16,6 +18,14 @@ vector<double> JMT(vector<double> &start, vector<double> &end, double T);
 vector<double> car_distance_cost(vector<Vehicle> ego_cars, vector<Vehicle> other_cars);
 vector<double> front_car_cost(vector<Vehicle> ego_cars, vector<Vehicle> other_cars);
 vector<double> lane_cost(vector<Vehicle> ego_cars);
+double final_velocity_cost(Trajectory ego_tj);
+double acceleration_peak_cost(Trajectory ego_tj);
+double acceleration_avg_cost(Trajectory ego_tj);
+double car_ahead_cost(Trajectory ego_tj, vector<Vehicle> other_cars);
+double driving_forward_cost(Trajectory ego_tj);
+double change_lane_cost(Trajectory ego_tj);
+double prohibited_lane_cost(Trajectory ego_tj);
+double distance_to_vehicle(Trajectory ego_tj, vector<Vehicle> other_cars);
 Trajectory generateTrajectory(vector<double> start_s, vector<double> end_s, vector<double> start_d, vector<double> end_d, double T, int traj_size);
 
 // for convenience
@@ -125,7 +135,7 @@ int main() {
             if (v.s() < (car_s + 70.0) && v.s() > (car_s - 70.0))
             {
               others.push_back(v);       
-              others[in_sov].propagate(70);    
+              others[in_sov].propagate(100);    
               //std::cout<<"others sov "<<in_sov<<" propagate "<<pp_size<< " init s " << others[in_sov].getTrajectory().s(0)<<" last s "<<others[in_sov].getTrajectory().lastS()<<std::endl;
               in_sov++;
             }
@@ -157,13 +167,13 @@ int main() {
                 */
 
                 //std::cout<<"CAR IS CLOSE and it is moving at"<<others[i].v()<<std::endl;
-                mph = mps2mph(other.v()-1);
-                distance = 40;
+                //mph = mps2mph(other.v()-1);
+                //distance = 40;
               }
               else
               {
                 distance = 30;
-                mph +=0.3;
+                //mph +=0.1;
               }
             }
           }
@@ -179,22 +189,25 @@ int main() {
           */
 
 
+          double T = 2.0;
+          double v = mph2mps(mph);
+
+
           int eaten_points = traj.size() - pp_size;
           int cpy_idx = 0;
           static bool init = true;
           if (init)
           {
-            eaten_points = 49;
+            eaten_points = T/0.02;
             init = false;
           }
 
 
-          double T = 3.0;
-          double v = mph2mps(mph);
+
           
-          if (mph>47)
+          if (mph>49.5)
           {
-            mph = 47;            
+            mph = 49.5;            
           }
 
           Trajectory new_traj;
@@ -208,7 +221,6 @@ int main() {
           vector<double> ego_s_d;
 
           vector<Vehicle> ego_cars; 
-
 
           if (pp_size == 0)
           {
@@ -234,154 +246,118 @@ int main() {
           {
             traj.removeN(eaten_points);
 
-            cpy_idx = 40;            
+            cpy_idx = 30;            
 
-            new_traj = traj.copyUpTo(traj.size()-cpy_idx);            
+            new_traj = traj.copyUpTo(cpy_idx);               
 
-            std::cout<<"new traj size"<<new_traj.size()<<std::endl;
 
-            start_s = {new_traj.lastS(), new_traj.lastSV(), new_traj.lastSA()};
-            end_s = {new_traj.lastS() + v * T, v, 0.0};
-            start_d = {new_traj.lastD(), new_traj.lastDV(), new_traj.lastDA()};
-            end_d = {new_traj.lastD(), 0.0, 0.0};
+            double target_s = new_traj.lastS() + new_traj.lastSV() * T;
+            int current_lane = getLane(new_traj.lastD(),4,2);
+            unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+            std::default_random_engine generator(seed);
+            std::normal_distribution<double> s_distrib(target_s, 40);
+            vector<Trajectory> candidates;
 
-            Trajectory traj1 = generateTrajectory(start_s, end_s, start_d, end_d, T, eaten_points+cpy_idx);
-            Trajectory candidate1 = Trajectory::appendTrajectories(new_traj, traj1);  
-            Vehicle ego1;
-            ego1.addTrajectory(candidate1);
-            ego_cars.push_back(ego1);  
-            std::cout<<"candidate1 size "<<candidate1.size()<<" init lane "<<getLane(candidate1.d(0),4,2)<<" last lane "<<getLane(candidate1.lastD(),4,2)<<" init s "<<candidate1.s(0)<<" last s "<<candidate1.lastS()<<std::endl;
+            //std::cout<<target_s<<" "<<new_traj.lastS()<<" "<<ceil((target_s-new_traj.lastS())*0.5)<<std::endl;
 
-            start_s = {new_traj.lastS(), new_traj.lastSV(), new_traj.lastSA()};
-            end_s = {new_traj.lastS() + v * T, v, 0.0};
-            start_d = {new_traj.lastD(), new_traj.lastDV(), new_traj.lastDA()};
-            end_d = {new_traj.lastD() + 4.0, 0.0, 0.0};
-
-            Trajectory traj2 = generateTrajectory(start_s, end_s, start_d, end_d, T, eaten_points+cpy_idx);
-            Trajectory candidate2 = Trajectory::appendTrajectories(new_traj, traj2);  
-            Vehicle ego2;
-            ego2.addTrajectory(candidate2);
-            ego_cars.push_back(ego2);
-            std::cout<<"candidate2 size "<<candidate2.size()<<" init lane "<<getLane(candidate2.d(0),4,2)<<" last lane "<<getLane(candidate2.lastD(),4,2)<<" init s "<<candidate2.s(0)<<" last s "<<candidate2.lastS()<<std::endl;
-            start_s = {new_traj.lastS(), new_traj.lastSV(), new_traj.lastSA()};
-            end_s = {new_traj.lastS() + v * T, v, 0.0};
-            start_d = {new_traj.lastD(), new_traj.lastDV(), new_traj.lastDA()};
-            end_d = {new_traj.lastD() - 4.0, 0.0, 0.0};
-
-            Trajectory traj3 = generateTrajectory(start_s, end_s, start_d, end_d, T, eaten_points+cpy_idx);
-            Trajectory candidate3 = Trajectory::appendTrajectories(new_traj, traj3);  
-            Vehicle ego3;
-            ego3.addTrajectory(candidate3);
-            ego_cars.push_back(ego3);
-            std::cout<<"candidate3 size "<<candidate2.size()<<" init lane "<<getLane(candidate3.d(0),4,2)<<" last lane "<<getLane(candidate3.lastD(),4,2)<<" init s "<<candidate3.s(0)<<" last s "<<candidate3.lastS()<<std::endl;
-
-            traj = candidate1;             
-          }
-
-                  
-
-/*
-
-          unsinged seed = std::chrono::system_clock::now().time_since_epoch().count();
-          std::default_random_engine generator(seed);
-          std::normal_distribution<double> s_distrib(target_s, 2.0);
-
-          for (int i = 0; i<3; i++)
-          {
-            double new_target_d = 2 + 4*tarj.lastD() * i;
-            for (int e = 0; e < 5; e++)
-            {
-              Trajectory candidate;
+            //std::cout<<"last S "<<new_traj.lastS()<<" and final S "<<target_s<<std::endl;
+            for (int i = 0; i<100; i++)
+            {                          
               double new_target_s = s_distrib(generator);
-              start_s = {traj.lastS(), traj.lastSV(), traj.lastSA()};
+             // std::cout<<" new target s "<<new_target_s<<std::endl;
+              Trajectory generated = generateTrajectory(  {new_traj.lastS(), new_traj.lastSV(), new_traj.lastSA()},
+                                                          {new_target_s, new_traj.lastSV(), 0.0},
+                                                          {new_traj.lastD(), new_traj.lastDV(), new_traj.lastDA()},
+                                                          {getLaneCenterFrenet(current_lane), 0.0, 0.0},
+                                                          T, 
+                                                          round(T/0.02)-cpy_idx);
+              candidates.push_back(Trajectory::appendTrajectories(new_traj, generated));
 
-              ego_trajs.push_back(traj);
-            }            
-          }
-*/
+              generated = generateTrajectory(   {new_traj.lastS(), new_traj.lastSV(), new_traj.lastSA()},
+                                                {new_target_s, new_traj.lastSV(), 0.0},
+                                                {new_traj.lastD(), new_traj.lastDV(), new_traj.lastDA()},
+                                                {getLaneCenterFrenet(current_lane+1), 0.0, 0.0},
+                                                T, 
+                                                round(T/0.02)-cpy_idx);
+              candidates.push_back(Trajectory::appendTrajectories(new_traj, generated));
 
-          
-     /*     
-          vector<double> coeffs_s = JMT(start_s, end_s, T);
-          vector<double> coeffs_d = JMT(start_d, end_d, T);
+              generated = generateTrajectory(   {new_traj.lastS(), new_traj.lastSV(), new_traj.lastSA()},
+                                                {new_target_s, new_traj.lastSV(), 0.0},
+                                                {new_traj.lastD(), new_traj.lastDV(), new_traj.lastDA()},
+                                                {getLaneCenterFrenet(current_lane-1), 0.0, 0.0},
+                                                T, 
+                                                round(T/0.02)-cpy_idx);
+              candidates.push_back(Trajectory::appendTrajectories(new_traj, generated));
+            }
+            //std::cout<<std::endl;
 
-          for (int i = 1; i<=(eaten_points+cpy_idx); ++i)
-          {
-            double t = i * 0.02;
-            double t_2 = pow(t, 2);
-            double t_3 = pow(t, 3);
-            double t_4 = pow(t, 4);
-            double t_5 = pow(t, 5);
-
-            double next_s =   coeffs_s[0]  + 
-                              coeffs_s[1] * t + 
-                              coeffs_s[2] * t_2 + 
-                              coeffs_s[3] * t_3 + 
-                              coeffs_s[4] * t_4 + 
-                              coeffs_s[5] * t_5;
-
-            double next_d =   coeffs_d[0]  + 
-                              coeffs_d[1] * t + 
-                              coeffs_d[2] * t_2 + 
-                              coeffs_d[3] * t_3 + 
-                              coeffs_d[4] * t_4 + 
-                              coeffs_d[5] * t_5;
-
-            double next_sv =      coeffs_s[1]  + 
-                              2 * coeffs_s[2] * t + 
-                              3 * coeffs_s[3] * t_2 + 
-                              4 * coeffs_s[4] * t_3 + 
-                              5 * coeffs_s[5] * t_4;
-
-            double next_dv =      coeffs_d[1]  + 
-                              2 * coeffs_d[2] * t + 
-                              3 * coeffs_d[3] * t_2 + 
-                              4 * coeffs_d[4] * t_3 + 
-                              5 * coeffs_d[5] * t_4;
-
-            double next_sa =  2 *  coeffs_s[2] + 
-                              6 *  coeffs_s[3] * t + 
-                              12 * coeffs_s[4] * t_2 + 
-                              20 * coeffs_s[5] * t_3;  
-
-            double next_da =  2 *  coeffs_d[2] + 
-                              6 *  coeffs_d[3] * t + 
-                              12 * coeffs_d[4] * t_2 + 
-                              20 * coeffs_d[5] * t_3;                                                           
-                                                                                                   
-            vector<double> xy = map.toRealWorldXY(next_s, next_d); 
-
-            double yaw = atan2(xy[1]-new_traj.lastY(), xy[0]-new_traj.lastX());          
+            Trajectory selected;
+            double total_cost = 9999;
+            double sel_fvc;  
+            double sel_apc;  
+            double sel_avc;  
+            double sel_cac;  
+            double sel_dfc;  
+            double sel_clc;  
+            double sel_plc;  
+            double sel_dvc;  
+            for(Trajectory tr : candidates)
+            {
+              double fvc = 1.8*final_velocity_cost(tr);
+              double apc = 1.0*acceleration_peak_cost(tr);
+              double avc = 1.0*acceleration_avg_cost(tr);
+              double cac = 3.0*car_ahead_cost(tr, others);
+              double dfc = 10.0*driving_forward_cost(tr);
+              double clc = 0.2*change_lane_cost(tr);
+              double plc = 10.0*prohibited_lane_cost(tr);
+              double dvc = 5.0*distance_to_vehicle(tr, others);
+              double sum =  
+                            fvc
+                            +apc
+                            +avc
+                            +cac
+                            +dfc
+                            +clc
+                            +plc
+                            +dvc
+                            +0;                            
+              //std::cout<<"cost cac: "<<cac<<std::endl;
+              //std::cout<<"cost fvc: "<<fvc<<"   cost apc: "<<apc<<"   cost avc: "<<avc <<"   SUM: "<<sum<<std::endl;
+              if (sum < total_cost)
+              {
+                total_cost = sum;
+                selected = tr;  
+                sel_fvc = fvc;
+                sel_apc = apc;
+                sel_avc = avc;
+                sel_cac = cac;
+                sel_dfc = dfc;
+                sel_clc = clc;    
+                sel_plc = plc; 
+                sel_dvc = dvc;       
+              }
+            }
             
-            new_traj.add(xy, {next_s, next_sv, next_sa}, {next_d, next_dv, next_da}, yaw);               
-          }        
+            // std::cout<<"selected cost "<<total_cost<<std::endl;
+             std::cout<<std::fixed;
+             std::cout<<std::setprecision(3);
+             std::cout<<
+             "vel:  "          <<sel_fvc<<
+            // "\tacc peak:  "   <<sel_apc<<
+            // "\tacc avg:  "    <<sel_avc<<
+            // "\tcar ahead:  "  <<sel_cac<<
+            // "\tforward:  "    <<sel_dfc<<
+             "\tchange lane:  "<<sel_clc<<
+            // "\tprohibited:  " <<sel_plc<<
+             "\tany car dis:  " <<sel_dvc
+             <<std::endl;
+            // std::cout<<std::endl;
 
-          traj = new_traj;
+            traj = selected;
 
-*/
-
- 
-
-        /*
-         vector<double> cdc = car_distance_cost(ego_cars, others);
-         std::cout<<"car distance cost"<<std::endl;
-         for (int i = 0; i<cdc.size(); i++)
-         {
-          if (cdc[i]>0.0)
-          {
-            std::cout<<"Trajectory "<<i+1<<" "<<cdc[i]<<std::endl;
           }
-         }
-         std::cout<<std::endl;
-         vector<double> lc = lane_cost(ego_cars);
-         std::cout<<"lane_cost"<<std::endl;
-         for (int i = 0; i<lc.size(); i++)
-         {
-          std::cout<<"Trajectory "<<i+1<<" "<<lc[i]<<std::endl;
-         }
-         std::cout<<std::endl;
-      */
-             
+
+    
 
           msgJson["next_x"] = traj.x();
           msgJson["next_y"] = traj.y();
@@ -428,7 +404,7 @@ vector<double> car_distance_cost(vector<Vehicle> ego_cars, vector<Vehicle> other
   for (Vehicle ego : ego_cars)
   {
     Trajectory ego_tj = ego.getTrajectory();
-    if (isLaneValid(getLane(ego_tj.lastD(), 2, 4)))
+    if (getLane(ego_tj.lastD(), 4, 2)>=0 && getLane(ego_tj.lastD(), 4, 2)<=2)
     {      
       for (Vehicle other : other_cars)
       {  
@@ -441,12 +417,12 @@ vector<double> car_distance_cost(vector<Vehicle> ego_cars, vector<Vehicle> other
           {
             min_dist = dist;
             car_found = true;
-            std::cout<<"car found"<<std::endl;
+            //std::cout<<"car found"<<std::endl;
           }        
         }       
       }
 
-      std::cout<<"min dist "<<min_dist<<std::endl;
+      //std::cout<<"min dist "<<min_dist<<std::endl;
       double c = 1.0 * (2.0 - exp(min_dist/43.3));
 
       if (!car_found)
@@ -520,7 +496,7 @@ vector<double> lane_cost(vector<Vehicle> ego_cars)
   for (Vehicle ego : ego_cars)
   {
     Trajectory ego_tj = ego.getTrajectory();
-    if (isLaneValid(getLane(ego_tj.lastD(), 4, 2)))
+    if (getLane(ego_tj.lastD(), 4, 2)>=0 && getLane(ego_tj.lastD(), 4, 2)<=2)
     {
       if (ego_tj.d(0) != ego_tj.lastD())
       {
@@ -535,6 +511,176 @@ vector<double> lane_cost(vector<Vehicle> ego_cars)
     {
       cost.push_back(1);
     }
+  }
+  return cost;
+}
+
+double final_velocity_cost(Trajectory ego_tj)
+{
+  double target_vel = mph2mps(49.0);
+  double v_lim = mph2mps(50);
+  double final_vel = ego_tj.lastSV();
+  double cost = 1.0;
+  //std::cout<<"final velocity cost "<<final_vel<<std::endl;
+  if (final_vel < target_vel)
+  {
+    cost = 1.0 - final_vel/target_vel;
+    //cost = -exp((final_vel-target_vel)/10.0) + 1.0;
+  }
+  else if(final_vel >target_vel && final_vel< v_lim)
+  {
+    double m = 1.0/(v_lim-target_vel);
+    double b = 1.0 - m*v_lim;
+    cost = (m*final_vel+b);
+    //cost = exp(7*(-v_lim+final_vel));
+  }
+  return cost;
+}
+
+double acceleration_peak_cost(Trajectory ego_tj)
+{
+  double cost = 0;
+  //std::cout<<"acc"<<std::endl;
+  for (int i = 0; i<ego_tj.size();i++)
+  {
+    double acc = abs(ego_tj.sa(i));
+   // std::cout<<" "<<acc;
+    double cost_temp =  1.0 - exp(-(acc)/10.0);
+    if (cost_temp>1.0)
+    {
+      cost_temp = 1.0;
+    }  
+    else if (cost_temp<0.0)
+    {
+      cost_temp = 0.0;
+    }
+
+    if (cost_temp > cost)
+    {
+      cost = cost_temp;
+    } 
+  }
+  //std::cout<<std::endl;
+  return cost;
+}
+
+double acceleration_avg_cost(Trajectory ego_tj)
+{
+  double cost = 0;
+  double avg = 0;
+  //std::cout<<"acc"<<std::endl;
+  for (int i = 0; i<ego_tj.size();i++)
+  {
+    double acc = abs(ego_tj.sa(i));
+   // std::cout<<" "<<acc;
+    avg += acc;   
+  }
+  cost = avg/ego_tj.size()/20.0;
+
+  if (cost > 1.0)
+  {
+    cost = 1.0;
+  }
+  //std::cout<<std::endl;
+  return cost;
+}
+
+double driving_forward_cost(Trajectory ego_tj)
+{
+  double cost = 0.0;
+
+  if (ego_tj.lastS()<ego_tj.s(0))
+  {
+    //std::cout<<"driving backwards!!"<<std::endl;
+    cost = 1.0;
+  }
+
+  return cost;
+}
+
+double car_ahead_cost(Trajectory ego_tj, vector<Vehicle> other_cars)
+{
+  double cost = 0.0;
+  double max_dist = 30.0;
+  for (Vehicle other : other_cars)
+  {  
+    Trajectory other_tj = other.getTrajectory();
+    int other_lane = getLane(other_tj.lastD(), 4, 2);
+    int ego_lane = getLane(ego_tj.lastD(), 4, 2);
+    if (other_lane == ego_lane &&
+        other_tj.lastS() > ego_tj.lastS())
+    {
+      double dist = other_tj.lastS() - ego_tj.lastS();
+      double cost_temp = 1.0 - exp((dist - max_dist)/10.0);
+      if (cost_temp>1.0)
+      {
+        cost_temp = 1.0;
+      }
+      else if (cost_temp < 0.0)
+      {
+        cost_temp = 0.0;
+      }
+
+      if (cost_temp>cost)
+      {
+        cost = cost_temp;
+      }
+    }      
+  }
+  return cost;
+}
+
+double change_lane_cost(Trajectory ego_tj)
+{
+  double cost = 0.0;
+  if(getLane(ego_tj.lastD(),4,2) != getLane(ego_tj.d(0),4,2))
+  {
+    cost = 1.0;
+  }
+  return cost;
+}
+
+double prohibited_lane_cost(Trajectory ego_tj)
+{
+  double cost = 0.0;
+  if(getLane(ego_tj.lastD(),4,2)<0 || getLane(ego_tj.lastD(),4,2)>2)
+  {
+    cost = 1.0;
+  }
+  return cost;
+}
+
+double distance_to_vehicle(Trajectory ego_tj, vector<Vehicle> other_cars)
+{
+  double cost = 0.0;
+  double max_dist = 5.0;
+  for (Vehicle other : other_cars)
+  {     
+    Trajectory other_tj = other.getTrajectory(); 
+    for (int i = 0; i<other_tj.size();i++)
+    {
+      double o_x = other_tj.x(i);
+      double o_y = other_tj.y(i);
+      double e_x = ego_tj.x(i);
+      double e_y = ego_tj.y(i);
+      double dist = sqrt((o_x-e_x)*(o_x-e_x) + (o_y-e_y)*(o_y-e_y));
+
+      double cost_temp = 1.0 - exp((dist - max_dist)/1.0);
+      if (cost_temp>1.0)
+      {
+        cost_temp = 1.0;
+      }
+      else if (cost_temp < 0.0)
+      {
+        cost_temp = 0.0;
+      }
+
+      if (cost_temp>cost)
+      {
+        cost = cost_temp;
+      }
+    
+    }      
   }
   return cost;
 }

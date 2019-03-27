@@ -161,7 +161,7 @@ inline vector<double> getXY(double s, double d, const vector<double> &maps_s,
 
 inline double getLaneCenterFrenet(int lane)
 {
-  return (1.8 + 4.0*lane);
+  return (2.0 + 4.0*lane);
 }
 
 
@@ -179,7 +179,7 @@ inline int getLane(double d, double lane_size, double lane_offset)
 
 inline bool isLaneValid(int lane)
 {
-  return lane >= 0 && LANES_COUNT;
+  return lane >= 0 && lane <LANES_COUNT;
 }
 
 
