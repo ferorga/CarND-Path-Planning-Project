@@ -168,11 +168,6 @@ inline double getLaneCenterFrenet(int lane)
 inline int getLane(double d, double lane_size, double lane_offset)
 {
   double cal_d = d - lane_offset;
-  if (cal_d < 0.0)
-  {
-    return -1;
-  }
-
   return (int)round(cal_d / lane_size);
 }
 

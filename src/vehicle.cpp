@@ -1,4 +1,5 @@
 #include "vehicle.h"
+#include "map.h"
 #include <math.h>
 
 using namespace std;
@@ -20,10 +21,12 @@ Vehicle::Vehicle(int id, double x, double y, double vx, double vy, double s, dou
 void Vehicle::propagate(int n)
 {  
     Trajectory prop;
+    Map &map = Map::getInstance();
     for( int i = 0; i < n; i++)
     {
-        double next_s = _s + _d * 0.02*i;                
-        prop.add({0,0}, {next_s, _v, 0.0}, {_d, 0.0, 0.0}, 0.0);        
+        double next_s = _s + _d * 0.02*i;       
+        vector<double> xy = map.toXY(next_s, _d);    
+        prop.add(xy, {next_s, _v, 0.0}, {_d, 0.0, 0.0}, 0.0);        
     }
     //std::cout<<"init prop s "<<prop.s(0)<<" last prop s "<<prop.lastS()<<std::endl;
     //std::cout<<"init prop sv "<<prop.sv(0)<<" last prop sv "<<prop.lastSV()<<std::endl;
