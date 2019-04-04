@@ -1,145 +1,78 @@
-# CarND-Path-Planning-Project
+# Path Planning Project - UDACITY
 Self-Driving Car Engineer Nanodegree Program
-   
-### Simulator.
-You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
 
-To run the simulator on Mac/Linux, first make the binary file executable with the following command:
-```shell
-sudo chmod u+x {simulator_file_name}
-```
+# Introduction
 
-### Goals
-In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
+This is one of the most challenging projects that I have had to face in the Udacity Nanodegree Program. There were many concepts to cover in a single project, starting from generating the smooth trajectory and communicating with the simulator to creating the multiple costs functions that allow the car to drive around the track safely.
 
-#### The map of the highway is in data/highway_map.txt
-Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
+One of the first and gratest challenge to me was to create the smooth trajectory withot doing what Aaron and David explained in their video. I found that their code was not really clean nor efficient to use it for cost evaluation. Although the video was really useful to get in touch with the simulator behaviour, I had to spend many hours doing tests myself to really understand what "previous path" was and how the simulator must to be fed with the waypoints.
 
-The highway's waypoints loop around so the frenet s value, distance along the road, goes from 0 to 6945.554.
+Moreover, the lessons before the project were too theoretical and not really usefull to complete the project. Actually, I only used the JMT trajectory generation and the explanetion from the costs lessons. The A* and other videos were not useful to accomplish with the project requirements.
 
-## Basic Build Instructions
+# Remarks
 
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./path_planning`.
+*  The current code is able to run with the simulator term 3 v1.2.
+*  It might still have some collisions when changing lanes.
+*  It only takes into account the contiguous lanes from the current position of the car. This means that if the car is driving in one of the side lanes, it will not generate a trajectory to the opposite side lane. This can create a situation that the car is stuck in traffic even when the furthest lane is empty of cars.
+*  My approach does not use a state machine. I found easier to create several paths from the car and evaluate all of them agains the cost functions.
+*  There is still work to do :).
 
-Here is the data provided from the Simulator to the C++ Program
+# Into the Code
 
-#### Main car's localization Data (No Noise)
+As a reference and to better understand how to approach the project, I used the code that [kenshiro-o](https://github.com/kenshiro-o/CarND-Path-Planning-Project) developed. In the end, I only used a few helper functions from his code and I didn't take anything from the main path planning algorithm and state machine.
 
-["x"] The car's x position in map coordinates
+## Code Structure
 
-["y"] The car's y position in map coordinates
+#### Main
 
-["s"] The car's s position in frenet coordinates
+Here is where the algorithm runs when new data is received from the simulator. It generates and keeps track of the trajectory that will be sent to the car simulator.
 
-["d"] The car's d position in frenet coordinates
+#### Vehicle
 
-["yaw"] The car's yaw angle in the map
+This class was created to allocate the other car objects. It includes the *propagate* function that creates a estimated trajectory based on a basic constant velocity model. This trajectory is used to compare with our current car trajectory and evaluate the costs.
 
-["speed"] The car's speed in MPH
+#### Costs
 
-#### Previous path data given to the Planner
+This file only contains a few costs functions that I created, tuned and evaluated to allow the car select the best and safest trajectory possible.
 
-//Note: Return the previous list but with processed points removed, can be a nice tool to show how far along
-the path has processed since last time. 
+#### Trajectory
 
-["previous_path_x"] The previous list of x points previously given to the simulator
+The Trajectory class stores the information of the points sent to the simulator in cartesian coordinate frame as well as frenet frame. This values are used in future iterations to allow continuity in the generation of the next points.
 
-["previous_path_y"] The previous list of y points previously given to the simulator
+This class also includes a static function to generate a JMT (Jerk Minimizing Trajectory) given the start and end points, and the trajectory elapsed time.
 
-#### Previous path's end s and d values 
+#### Map
 
-["end_path_s"] The previous list's last point's frenet s value
+This class includes some methods to convert from cartesian to frenet and smooth the path by using a spline function between all the waypoints given in the csv file.
 
-["end_path_d"] The previous list's last point's frenet d value
+#### Spline
 
-#### Sensor Fusion Data, a list of all other car's attributes on the same side of the road. (No Noise)
+[External library](https://kluge.in-chemnitz.de/opensource/spline/) used to create spline functions and smooth the trajectory.
 
-["sensor_fusion"] A 2d vector of cars and then that car's [car's unique ID, car's x position in map coordinates, car's y position in map coordinates, car's x velocity in m/s, car's y velocity in m/s, car's s position in frenet coordinates, car's d position in frenet coordinates. 
+## Trajectory Generation
 
-## Details
+A trajectory is a set (vector) of points in cartesian coordinates that is sent to the simulator to make it move. The simulator "eats" one point of the array every 0.02s (50 times per second). Then, depending on how far we set the points to each other, we will be given the velocity of the car. 
 
-1. The car uses a perfect controller and will visit every (x,y) point it recieves in the list every .02 seconds. The units for the (x,y) points are in meters and the spacing of the points determines the speed of the car. The vector going from a point to the next point in the list dictates the angle of the car. Acceleration both in the tangential and normal directions is measured along with the jerk, the rate of change of total Acceleration. The (x,y) point paths that the planner recieves should not have a total acceleration that goes over 10 m/s^2, also the jerk should not go over 50 m/s^3. (NOTE: As this is BETA, these requirements might change. Also currently jerk is over a .02 second interval, it would probably be better to average total acceleration over 1 second and measure jerk from that.
+My code includes a definition of the *time horizon*. This parameter will then set the number of points of our trajectory and how long it is depending on the velocity. By default it is set to 2, meaning that the whole trajectory will last 2 seconds if we only send it one time. 
 
-2. There will be some latency between the simulator running and the path planner returning a path, with optimized code usually its not very long maybe just 1-3 time steps. During this delay the simulator will continue using points that it was last given, because of this its a good idea to store the last points you have used so you can have a smooth transition. previous_path_x, and previous_path_y can be helpful for this transition since they show the last points given to the simulator controller with the processed points already removed. You would either return a path that extends this previous path or make sure to create a new path that has a smooth transition with this last path.
+Then, in each iteration, we check how many points the simulator has "eaten" and then we will add the same number of points to our next trajectory. It is important to understand that we need to send again the whole trajectory, not only the new points. This gave me some headaches because the simulator stores the "previous path" but it is required to send it again if you want to keep the continuity of the movements.
 
-## Tips
+The new trajectory is created from a certain point of the older trajectory (30 by default). For example, if our trajectory has 100 points by default, what we do is to keep up to the 30th point of our trajectory and we generate 70 points more with different target S and D. I decided to create the following trajectories from this 30th point:
 
-A really helpful resource for doing this project and creating smooth trajectories was using http://kluge.in-chemnitz.de/opensource/spline/, the spline function is in a single hearder file is really easy to use.
+* 50 Trajectories ahead the car with a gaussian generator that will modify the target S and D.
+* 50 Trajectories ahead the car in the right lane to the car with a gaussian generator that will modify the target S and D.
+* 50 Trajectories ahead the car in the left lane to the car with a gaussian generator tat will modify the target S and D.
 
----
+The problem with this approach is that if the car is in the very left or right lane wi will not have trajectories created to the opposite lane.
 
-## Dependencies
+The D gaussian generator has a standard deviation defined by default to be 0.2.
+The S gaussian generator has a variable standard deviation that will depend on the older S and velocity.
 
-* cmake >= 3.5
-  * All OSes: [click here for installation instructions](https://cmake.org/install/)
-* make >= 4.1
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
-* [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `install-mac.sh` or `install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets 
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
+## Vehicles
 
-## Editor Settings
+I only keep track of all the cars 70 meters ahead and 30 meters behind our car and in our direction. Then I propagate their trajectory the same amount of time of our car trajectory time horizon. The other cars and our car must have the same trajectory length.
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+## Costs
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
-
-## Code Style
-
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
-
-## Project Instructions and Rubric
-
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
-
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
+The cost functions were tuned experimentally. Although I used desmos to easily see the limits and function parameters.
+The current code is not using of all them. I created some that didn't give me the expected results but I decided to keep them in the code for future use or improvement.
