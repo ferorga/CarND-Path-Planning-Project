@@ -9,10 +9,10 @@ One of the first and gratest challenge to me was to create the smooth trajectory
 
 Moreover, the lessons before the project were too theoretical and not really usefull to complete the project. Actually, I only used the JMT trajectory generation and the explanetion from the costs lessons. The A* and other videos were not useful to accomplish with the project requirements.
 
-# Disclaimer
+# Remarks
 
 *  The current code is able to run with the simulator term 3 v1.2.
-*  It can still have some collisions when overtaking.
+*  It might still have some collisions when changing lanes.
 *  It only takes into account the contiguous lanes from the current position of the car. This means that if the car is driving in one of the side lanes, it will not generate a trajectory to the opposite side lane. This can create a situation that the car is stuck in traffic even when the furthest lane is empty of cars.
 *  My approach does not use a state machine. I found easier to create several paths from the car and evaluate all of them agains the cost functions.
 *  There is still work to do :).
