@@ -1,6 +1,8 @@
 # Path Planning Project - UDACITY
 Self-Driving Car Engineer Nanodegree Program
 
+![alt text](https://github.com/ferorga/CarND-Path-Planning-Project/blob/master/images/Simulator.JPG)
+
 # Introduction
 
 This is one of the most challenging projects that I have had to face in the Udacity Nanodegree Program. There were many concepts to cover in a single project, starting from generating the smooth trajectory and communicating with the simulator to creating the multiple costs functions that allow the car to drive around the track safely.
@@ -76,3 +78,5 @@ I only keep track of all the cars 70 meters ahead and 30 meters behind our car a
 
 The cost functions were tuned experimentally. Although I used desmos to easily see the limits and function parameters.
 The current code is not using of all them. I created some that didn't give me the expected results but I decided to keep them in the code for future use or improvement.
+
+![alt text](https://github.com/ferorga/CarND-Path-Planning-Project/blob/master/images/Cost_example.JPG)
