@@ -23,33 +23,33 @@ As a reference and to better understand how to approach the project, I used the 
 
 ## Code Structure
 
-### Main
+#### Main
 
 Here is where the algorithm runs when new data is received from the simulator. It generates and keeps track of the trajectory that will be sent to the car simulator.
 
-### Vehicle
+#### Vehicle
 
 This class was created to allocate the other car objects. It includes the *propagate* function that creates a estimated trajectory based on a basic constant velocity model. This trajectory is used to compare with our current car trajectory and evaluate the costs.
 
-### Costs
+#### Costs
 
 This file only contains a few costs functions that I created, tuned and evaluated to allow the car select the best and safest trajectory possible.
 
-### Trajectory
+#### Trajectory
 
 The Trajectory class stores the information of the points sent to the simulator in cartesian coordinate frame as well as frenet frame. This values are used in future iterations to allow continuity in the generation of the next points.
 
 This class also includes a static function to generate a JMT (Jerk Minimizing Trajectory) given the start and end points, and the trajectory elapsed time.
 
-### Map
+#### Map
 
 This class includes some methods to convert from cartesian to frenet and smooth the path by using a spline function between all the waypoints given in the csv file.
 
-### Spline
+#### Spline
 
 [External library](https://kluge.in-chemnitz.de/opensource/spline/) used to create spline functions and smooth the trajectory.
 
-## Trajectory
+## Trajectory Generation
 
 A trajectory is a set (vector) of points in cartesian coordinates that is sent to the simulator to make it move. The simulator "eats" one point of the array every 0.02s (50 times per second). Then, depending on how far we set the points to each other, we will be given the velocity of the car. 
 
