@@ -4,7 +4,14 @@
 #include <iostream>
 #include <vector>
 
+#include "Eigen-3.3/Eigen/Core"
+#include "Eigen-3.3/Eigen/QR"
+#include "Eigen-3.3/Eigen/Dense"
+
 using std::vector;
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 class Trajectory
 {
@@ -20,6 +27,9 @@ public:
 	Trajectory copyUpTo(int idx);
 	
 	static Trajectory appendTrajectories(Trajectory ap1, Trajectory ap2);
+
+	static vector<double> JMT(vector<double> &start, vector<double> &end, double T);
+	static Trajectory generateTrajectory(vector<double> start_s, vector<double> end_s, vector<double> start_d, vector<double> end_d, double T, int traj_size);
 
 	vector<double> x(void);
 	vector<double> y(void);

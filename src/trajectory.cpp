@@ -1,4 +1,5 @@
 #include "trajectory.h"
+#include "map.h"
 
 Trajectory::Trajectory()
 {
@@ -70,6 +71,92 @@ Trajectory Trajectory::appendTrajectories(Trajectory ap1, Trajectory ap2)
 	}
 
 	return ret;
+}
+
+Trajectory Trajectory::generateTrajectory(vector<double> start_s, vector<double> end_s, vector<double> start_d, vector<double> end_d, double T, int traj_size)
+{
+  Trajectory gen;
+
+  Map &map = Map::getInstance();
+
+  vector<double> coeffs_s = Trajectory::JMT(start_s, end_s, T);
+  vector<double> coeffs_d = Trajectory::JMT(start_d, end_d, T);
+
+  for (int i = 1; i<=traj_size; ++i)
+  {
+    double t = i * 0.02;
+    double t_2 = pow(t, 2);
+    double t_3 = pow(t, 3);
+    double t_4 = pow(t, 4);
+    double t_5 = pow(t, 5);
+
+    double next_s =   coeffs_s[0]  + 
+                      coeffs_s[1] * t + 
+                      coeffs_s[2] * t_2 + 
+                      coeffs_s[3] * t_3 + 
+                      coeffs_s[4] * t_4 + 
+                      coeffs_s[5] * t_5;
+
+    double next_d =   coeffs_d[0]  + 
+                      coeffs_d[1] * t + 
+                      coeffs_d[2] * t_2 + 
+                      coeffs_d[3] * t_3 + 
+                      coeffs_d[4] * t_4 + 
+                      coeffs_d[5] * t_5;
+
+    double next_sv =      coeffs_s[1]  + 
+                      2 * coeffs_s[2] * t + 
+                      3 * coeffs_s[3] * t_2 + 
+                      4 * coeffs_s[4] * t_3 + 
+                      5 * coeffs_s[5] * t_4;
+
+    double next_dv =      coeffs_d[1]  + 
+                      2 * coeffs_d[2] * t + 
+                      3 * coeffs_d[3] * t_2 + 
+                      4 * coeffs_d[4] * t_3 + 
+                      5 * coeffs_d[5] * t_4;
+
+    double next_sa =  2 *  coeffs_s[2] + 
+                      6 *  coeffs_s[3] * t + 
+                      12 * coeffs_s[4] * t_2 + 
+                      20 * coeffs_s[5] * t_3;  
+
+    double next_da =  2 *  coeffs_d[2] + 
+                      6 *  coeffs_d[3] * t + 
+                      12 * coeffs_d[4] * t_2 + 
+                      20 * coeffs_d[5] * t_3;                                                           
+                                                                                           
+    vector<double> xy = map.toRealWorldXY(next_s, next_d); 
+
+    //double yaw = atan2(xy[1]-gen.lastY(), xy[0]-gen.lastX());          
+    
+    gen.add(xy, {next_s, next_sv, next_sa}, {next_d, next_dv, next_da}, 0.0);               
+  }  
+
+  return gen;
+
+}
+
+vector<double> Trajectory::JMT(vector<double> &start, vector<double> &end, double T)
+{
+    MatrixXd a(3,3);
+    double T2 =  T*T, 
+           T3 = T2*T, 
+           T4 = T3*T,
+           T5 = T4*T;
+    a <<  T3,    T4,    T5, 
+        3*T2,  4*T3,  5*T4, 
+         6*T, 12*T2, 20*T3;
+    MatrixXd aInv = a.inverse();
+    
+    VectorXd b(3);
+    b << end[0] - (start[0] + start[1]*T + 0.5*start[2]*T2),
+         end[1] - (           start[1]   +     start[2]*T),
+         end[2] - (                            start[2]);
+    VectorXd alpha = aInv * b;
+    
+    vector<double> output = {start[0], start[1], 0.5*start[2], alpha[0], alpha[1], alpha[2]};
+    return output;
 }
 
 int Trajectory::size(void)
