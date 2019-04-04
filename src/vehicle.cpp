@@ -25,7 +25,7 @@ void Vehicle::propagate(int n)
     for( int i = 0; i < n; i++)
     {
         double next_s = _s + _d * 0.02*i;       
-        vector<double> xy = map.toXY(next_s, _d);    
+        vector<double> xy = map.toRealWorldXY(next_s, _d);    
         prop.add(xy, {next_s, _v, 0.0}, {_d, 0.0, 0.0}, 0.0);        
     }
     //std::cout<<"init prop s "<<prop.s(0)<<" last prop s "<<prop.lastS()<<std::endl;

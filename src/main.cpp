@@ -175,7 +175,7 @@ int main() {
           {
             eaten_points = T/0.02;
             init = false;
-            acceleration_peak_cost_k = 10;
+            acceleration_peak_cost_k = 15;
           }
 
           if (acceleration_peak_cost_k > 1.0)
@@ -256,9 +256,9 @@ int main() {
             {                          
               double new_target_s = s_distrib(generator);
               double new_target_sv = (new_target_s -  new_traj.lastS())/T;
-              if (new_target_sv > 49.5)
+              if (new_target_sv > 49.9)
               {
-                new_target_sv = 49.5;
+                new_target_sv = 49.9;
               }
               double new_target_d = d_distrib(generator);
              // std::cout<<" new target s "<<new_target_s<<std::endl;
@@ -307,27 +307,27 @@ int main() {
               double fvc = 1.0*final_velocity_cost(tr);
               double mvc = 5.0*max_velocity_cost(tr);
               double apc = acceleration_peak_cost_k*acceleration_peak_cost(tr);
-              double avc = 0.2*acceleration_avg_cost(tr);
-              double cac = 3.0*car_ahead_cost(tr, others);
+              double avc = 1.0*acceleration_avg_cost(tr);
+              double cac = 2.0*car_ahead_cost(tr, others);
               double dfc = 100.0*driving_forward_cost(tr);
               double clc = 0.01*change_lane_cost(tr);
               double plc = 100.0*prohibited_lane_cost(tr);
               double dvc = 50.0*distance_to_vehicle(tr, others);
               double ilc = 0.1*inside_lane_cost(tr);
               double ncc = 0.5*nocars_ahead_cost(tr, others);
-              double csc = 1.0*change_safe_cost(tr, others);
+              double csc = 10.0*change_safe_cost(tr, others);
               double sum =  
                             0
                             +fvc
                             +mvc
-                            //+apc
+                            +apc
                             //+avc
                             +cac
                             +dfc
                             +clc
                             +plc
                             //+dvc
-                            //+ilc
+                            +ilc
                             //+ncc
                             +csc
                             +0;                            
@@ -685,7 +685,7 @@ double car_ahead_cost(Trajectory ego_tj, vector<Vehicle> other_cars)
         if (getLane(ego_tj.d(i),4,2) == other_lane)      
         {
           double dist = abs(other_tj.s(i) - ego_tj.s(i));
-          double cost_temp = exp(-0.2 * dist);
+          double cost_temp = exp(-0.3 * dist);
           if (cost_temp > 1.0)
           {
             cost_temp = 1.0;
@@ -822,8 +822,10 @@ double change_safe_cost(Trajectory ego_tj, vector<Vehicle> other_cars)
       {
         double ego_s = ego_tj.lastS();
         double other_s = other_tj.lastS();
-        double dist = abs(ego_s - other_s);
-        double cost_temp = -dist/5 + 1;
+        double ego_d = ego_tj.lastD();
+        double other_d = other_tj.lastD();
+        double dist = sqrt((ego_s - other_s)*(ego_s - other_s)+(ego_d - other_d)*(ego_d - other_d));
+        double cost_temp = -dist/20 + 1;
         if (cost_temp<0.0)
         {
           cost_temp = 0.0;
