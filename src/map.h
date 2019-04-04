@@ -21,6 +21,7 @@ class Map
 
         
         vector<double> toFrenet(double x, double y, double theta);
+        vector<double> toXY(double s, double d);
 
         vector<double> toRealWorldXY(double s, double d);
 

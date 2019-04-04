@@ -1,75 +1,52 @@
 #ifndef VEHICLE_H
 #define VEHICLE_H
-#include <iostream>
 #include <vector>
+#include "trajectory.h"
 
 using namespace std;
 
-class Vehicle
+class Vehicle : public Trajectory
 {
     public:
-        int id;
+        int _id;
         
-        double x;
-        double y;
+        double _x;
+        double _y;
         
-        double vx;
-        double vy;
+        double _vx;
+        double _vy;
         
-        double s;
-        double d;
+        double _s;
+        double _d;
 
-        // Timestep
-        double t;
+        double _v;
 
-        // We can compute those
-        int lane;
-        bool isInLane;
-        double theta;
+        Trajectory _traj;
 
         /**
          * Constructors
          */
         Vehicle(); 
-        Vehicle(int id, double x, double y, double vx, double vy, double s, double d, double t);
+        Vehicle(int id, double x, double y, double vx, double vy, double s, double d);
+
+        void propagate(int n);
+
+        int id(void);
+        double d(void);           
+        double s(void);      
+        double x(void);      
+        double y(void);      
+        double vx(void);     
+        double vy(void);   
+        double v(void);     
+
+        void addTrajectory(Trajectory traj);
+        Trajectory getTrajectory(void);
+        int trajectorySize(void);
 
         /**
         * Destructor
         */
         virtual ~Vehicle();
-
-        // Returns a new vehicle at the next timestep
-        Vehicle predictNextPosition(double t1, const vector<double> &maps_x, const vector<double> &maps_y);
-        
-        /**
-         * @brief Predicts the vehicle's future position at time t (in seconds)
-         * We assume constant speed and 0 acceleration
-         * 
-         * @param t the timestep into the future in seconds
-         * @return Vehicle the vehicle at timestep t in the future
-         */
-        Vehicle predictFuturePosition(double t) const;
-
-        /**
-         * @brief Checks which vehicles are ahead of the current vehicle on the given lane
-         * 
-         * @param others the other vehicles which may be ahead
-         * @param lane the lane to check against
-         * @return vector<Vehicle>  the vehicles ahead of the current vehicle
-         */
-        vector<Vehicle> ahead(const vector<Vehicle>& others, int lane) const;
-
-        /**
-         * @brief Checks which vehicles are behind of the current vehicle on the given lane
-         * 
-         * @param others the other vehicles which may be behind
-         * @param lane the lane to check against
-         * @return vector<Vehicle>  the vehicles behind of the current vehicle
-         */
-        vector<Vehicle> behind(const vector<Vehicle>& others, int lane) const;
-
-        
-
-        double getSpeed() const;
 };
 #endif

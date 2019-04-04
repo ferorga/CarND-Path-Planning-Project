@@ -57,22 +57,20 @@ int Map::closestWaypoint(double x, double y)
 
 int Map::nextWaypoint(double x, double y, double theta)
 {
-	int closestWaypoint = this->closestWaypoint(x, y);
+	int closestWaypoint = ClosestWaypoint(x,y,map_waypoints_x,map_waypoints_y);
 
-	double map_x = this->map_waypoints_x[closestWaypoint];
-	double map_y = this->map_waypoints_y[closestWaypoint];
+	double map_x = map_waypoints_x[closestWaypoint];
+	double map_y = map_waypoints_y[closestWaypoint];
 
-	double heading = atan2((map_y - y), (map_x - x));
+	double heading = atan2((map_y-y),(map_x-x));
 
-	double angle = fabs(theta - heading);
-	angle = min(2 * pi() - angle, angle);
+	double angle = fabs(theta-heading);
+	angle = std::min(2*pi() - angle, angle);
 
-	if (angle > pi() / 4)
-	{
-		closestWaypoint++;
-		if (closestWaypoint == this->map_waypoints_x.size())
-		{
-			closestWaypoint = 0;
+	if (angle > pi()/2) {
+		++closestWaypoint;
+		if (closestWaypoint == map_waypoints_x.size()) {
+		  closestWaypoint = 0;
 		}
 	}
 
@@ -81,49 +79,51 @@ int Map::nextWaypoint(double x, double y, double theta)
 
 vector<double> Map::toFrenet(double x, double y, double theta)
 {
-	int next_wp = this->nextWaypoint(x, y, theta);
+
+	int next_wp = this->nextWaypoint(x,y, theta);
 
 	int prev_wp;
-	prev_wp = next_wp - 1;
-	if (next_wp == 0)
-	{
-		prev_wp = this->map_waypoints_x.size() - 1;
+	prev_wp = next_wp-1;
+	if (next_wp == 0) {
+	prev_wp  = map_waypoints_x.size()-1;
 	}
 
-	double n_x = this->map_waypoints_x[next_wp] - this->map_waypoints_x[prev_wp];
-	double n_y = this->map_waypoints_y[next_wp] - this->map_waypoints_y[prev_wp];
-	double x_x = x - this->map_waypoints_x[prev_wp];
-	double x_y = y - this->map_waypoints_y[prev_wp];
+	double n_x = map_waypoints_x[next_wp]-map_waypoints_x[prev_wp];
+	double n_y = map_waypoints_y[next_wp]-map_waypoints_y[prev_wp];
+	double x_x = x - map_waypoints_x[prev_wp];
+	double x_y = y - map_waypoints_y[prev_wp];
 
 	// find the projection of x onto n
-	double proj_norm = (x_x * n_x + x_y * n_y) / (n_x * n_x + n_y * n_y);
-	double proj_x = proj_norm * n_x;
-	double proj_y = proj_norm * n_y;
+	double proj_norm = (x_x*n_x+x_y*n_y)/(n_x*n_x+n_y*n_y);
+	double proj_x = proj_norm*n_x;
+	double proj_y = proj_norm*n_y;
 
-	double frenet_d = distance(x_x, x_y, proj_x, proj_y);
+	double frenet_d = distance(x_x,x_y,proj_x,proj_y);
 
 	//see if d value is positive or negative by comparing it to a center point
+	double center_x = 1000-map_waypoints_x[prev_wp];
+	double center_y = 2000-map_waypoints_y[prev_wp];
+	double centerToPos = distance(center_x,center_y,x_x,x_y);
+	double centerToRef = distance(center_x,center_y,proj_x,proj_y);
 
-	double center_x = 1000 - this->map_waypoints_x[prev_wp];
-	double center_y = 2000 - this->map_waypoints_y[prev_wp];
-	double centerToPos = distance(center_x, center_y, x_x, x_y);
-	double centerToRef = distance(center_x, center_y, proj_x, proj_y);
-
-	if (centerToPos <= centerToRef)
-	{
-		frenet_d *= -1;
+	if (centerToPos <= centerToRef) {
+	frenet_d *= -1;
 	}
 
 	// calculate s value
 	double frenet_s = 0;
-	for (int i = 0; i < prev_wp; i++)
-	{
-		frenet_s += distance(this->map_waypoints_x[i], this->map_waypoints_y[i], this->map_waypoints_x[i + 1], this->map_waypoints_y[i + 1]);
+	for (int i = 0; i < prev_wp; ++i) {
+	frenet_s += distance(map_waypoints_x[i],map_waypoints_y[i],map_waypoints_x[i+1],map_waypoints_y[i+1]);
 	}
 
-	frenet_s += distance(0, 0, proj_x, proj_y);
+	frenet_s += distance(0,0,proj_x,proj_y);
 
-	return {frenet_s, frenet_d};
+	return {frenet_s,frenet_d};
+}
+
+vector<double> Map::toXY(double s, double d)
+{
+	return getXY(s, d, this->map_waypoints_s, this->map_waypoints_x, this->map_waypoints_y);
 }
 
 vector<double> Map::toRealWorldXY(double s, double d)

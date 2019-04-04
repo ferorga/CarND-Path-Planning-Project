@@ -161,25 +161,20 @@ inline vector<double> getXY(double s, double d, const vector<double> &maps_s,
 
 inline double getLaneCenterFrenet(int lane)
 {
-  return (1.8 + 4.0*lane);
+  return (2.0 + 4.0*lane);
 }
 
 
 inline int getLane(double d, double lane_size, double lane_offset)
 {
   double cal_d = d - lane_offset;
-  if (cal_d < 0.0)
-  {
-    return -1;
-  }
-
-  return (int)floor(cal_d / lane_size);
+  return (int)round(cal_d / lane_size);
 }
 
 
 inline bool isLaneValid(int lane)
 {
-  return lane >= 0 && LANES_COUNT;
+  return lane >= 0 && lane <LANES_COUNT;
 }
 
 
@@ -194,6 +189,14 @@ inline bool isWithinLane(double d, double lane_spacing, double lane_inside_offse
   int target_lane = (int)floor(d / lane_spacing);
   int calibrated_lane = (int)floor(calibrated_d / lane_spacing);
   return target_lane == calibrated_lane;
+}
+
+inline bool isInTheSameLane(double d1, double d2)
+{
+  int l1 = (int)(floor)((d1-2.0)/4.0);
+  int l2 = (int)(floor)((d2-2.0)/4.0);
+
+  return (l1 == l2);
 }
 
 

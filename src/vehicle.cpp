@@ -1,88 +1,91 @@
-#include <iostream>
-#include <math.h>
 #include "vehicle.h"
-#include "helpers.h"
 #include "map.h"
+#include <math.h>
 
 using namespace std;
 
 Vehicle::Vehicle() {}
 
-Vehicle::Vehicle(int id, double x, double y, double vx, double vy, double s, double d, double t)
+Vehicle::Vehicle(int id, double x, double y, double vx, double vy, double s, double d)
 {
-    this->id = id;
-    this->x = x;
-    this->y = y;
-    this->vx = vx;
-    this->vy = vy;
-    this->s = s;
-    this->d = d;
-    this->t = t;
-
-    this->theta = getTheta(vx, vy);
-    this->isInLane = isWithinLane(this->d, 4.0, 1.5);
-    this->lane = getLane(this->d, 4.0, 1.5);
+    _id = id;
+    _x = x;
+    _y = y;
+    _vx = vx;
+    _vy = vy;
+    _s = s;
+    _d = d;    
+    _v = sqrt(vx*vx + vy*vy);
 }
 
-Vehicle Vehicle::predictNextPosition(double t1, const vector<double> &maps_x, const vector<double> &maps_y)
-{
-    double newX = this->x + this->vx * t1;
-    double newY = this->y + this->vy * t1;
-    double theta = atan2(newY - this->y, newX - this->x);
-    vector<double> frenet = Map::getInstance().toFrenet(newX, newY, theta);
-
-    return Vehicle(this->id, newX, newY, this->vx, this->vy, frenet[0], frenet[1], t1);
-}
-
-Vehicle Vehicle::predictFuturePosition(double t) const
-{
-    double newX = this->x + this->vx * t;
-    double newY = this->y + this->vy * t;
-
+void Vehicle::propagate(int n)
+{  
+    Trajectory prop;
     Map &map = Map::getInstance();
-    vector<double> frenet = map.toFrenet(newX, newY, this->theta);
-    return Vehicle(this->id, newX, newY, this->vx, this->vy, frenet[0], frenet[1], t);
-}
-
-double Vehicle::getSpeed() const
-{
-    return sqrt(this->vx * this->vx + this->vy * this->vy);
-}
-
-vector<Vehicle> Vehicle::ahead(const vector<Vehicle> &others, int lane) const
-{
-    vector<Vehicle> v_ahead;
-    for (const Vehicle &v : others)
+    for( int i = 0; i < n; i++)
     {
-        if (v.lane != lane)
-        {
-            continue;
-        }
-        if (v.s >= this->s)
-        {
-            v_ahead.push_back(v);
-        }
+        double next_s = _s + _d * 0.02*i;       
+        vector<double> xy = map.toRealWorldXY(next_s, _d);    
+        prop.add(xy, {next_s, _v, 0.0}, {_d, 0.0, 0.0}, 0.0);        
     }
-
-    return v_ahead;
+    //std::cout<<"init prop s "<<prop.s(0)<<" last prop s "<<prop.lastS()<<std::endl;
+    //std::cout<<"init prop sv "<<prop.sv(0)<<" last prop sv "<<prop.lastSV()<<std::endl;
+    _traj = prop;
 }
 
-vector<Vehicle> Vehicle::behind(const vector<Vehicle> &others, int lane) const
+int Vehicle::id(void)
 {
-    vector<Vehicle> v_behind;
-    for (const Vehicle &v : others)
-    {
-        if (v.lane != lane)
-        {
-            continue;
-        }
-        if (v.s < this->s)
-        {
-            v_behind.push_back(v);
-        }
-    }
+    return _id;
+}
 
-    return v_behind;
+double Vehicle::d(void)
+{
+    return _d;
+}
+
+double Vehicle::s(void)
+{
+    return _s;
+}
+
+double Vehicle::x(void)
+{
+    return _x;
+}
+
+double Vehicle::y(void)
+{
+    return _y;
+}
+
+double Vehicle::vx(void)
+{
+    return _vx;
+}
+
+double Vehicle::vy(void)
+{
+    return _vy;
+}
+
+double Vehicle::v(void)
+{
+    return _v;
+}
+
+void Vehicle::addTrajectory(Trajectory traj)
+{
+    _traj = traj;
+}
+
+Trajectory Vehicle::getTrajectory(void)
+{
+    return _traj;
+}
+
+int Vehicle::trajectorySize(void)
+{
+    return _traj.size();
 }
 
 Vehicle::~Vehicle() {}

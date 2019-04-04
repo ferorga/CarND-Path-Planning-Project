@@ -4,7 +4,14 @@
 #include <iostream>
 #include <vector>
 
+#include "Eigen-3.3/Eigen/Core"
+#include "Eigen-3.3/Eigen/QR"
+#include "Eigen-3.3/Eigen/Dense"
+
 using std::vector;
+
+using Eigen::MatrixXd;
+using Eigen::VectorXd;
 
 class Trajectory
 {
@@ -17,31 +24,40 @@ public:
 
 	void add(vector<double> xy, vector<double> s_state, vector<double> d_state, double yaw);
 	void removeN(int n);
+	Trajectory copyUpTo(int idx);
+	
+	static Trajectory appendTrajectories(Trajectory ap1, Trajectory ap2);
 
-	double getX(int idx);
-	double getY(int idx);
-	double getS(int idx);
-	double getD(int idx);
-	double getSV(int idx);		
-	double getDV(int idx);
-	double getSA(int idx);		
-	double getDA(int idx);
+	static vector<double> JMT(vector<double> &start, vector<double> &end, double T);
+	static Trajectory generateTrajectory(vector<double> start_s, vector<double> end_s, vector<double> start_d, vector<double> end_d, double T, int traj_size);
 
-	int getSize(void);
+	vector<double> x(void);
+	vector<double> y(void);
+	double x(int idx);
+	double y(int idx);
+	double s(int idx);
+	double d(int idx);
+	double sv(int idx);		
+	double dv(int idx);
+	double sa(int idx);		
+	double da(int idx);
+	double yaw(int idx);
 
-	double getLastX(void);
-	double getLastY(void);	
-	double getLastS(void);
-	double getLastD(void);
-	double getLastSV(void);
-	double getLastDV(void);
-	double getLastSA(void);
-	double getLastDA(void);
+	int size(void);
+
+	double lastX(void);
+	double lastY(void);	
+	double lastS(void);
+	double lastD(void);	
+	double lastSV(void);
+	double lastDV(void);
+	double lastSA(void);
+	double lastDA(void);
 
 private:
 
-	vector<double> _xs;
-	vector<double> _ys;
+	vector<double> _x_s;
+	vector<double> _y_s;
 	vector<double> _s_s;
 	vector<double> _s_v;
 	vector<double> _s_a;
